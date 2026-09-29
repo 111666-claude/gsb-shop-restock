@@ -19,7 +19,7 @@ def main(argv=None):
         for _ in range(3):
             money, _ = buy(shop, "potion", 20260929, money)
         try:
-            money, _ = buy(shop, "potion", 20260930, money)
+            buy(shop, "potion", 20260930, money)
             print("next_day_ok=True money=%d" % money)
         except ShopError as error:
             print("next_day_ok=False money=%d" % money)

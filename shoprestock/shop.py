@@ -1,11 +1,14 @@
 """商店限购与每天刷新。
 
-缺陷：限购按累计购买次数（不按天）、余额不足也扣成负数、刷新时刻没有重置计数。
+限购按天独立计数，服务器日期（每天 05:00 刷新）变化时清零；
+余额不足拒绝购买，余额不变。
 """
+
+from datetime import datetime, timedelta
 
 
 class ShopError(ValueError):
-    """输入不合法。缺陷：不带物品名。"""
+    """购买被拒绝（商品不存在、超过每日限购或余额不足）。"""
 
     def __init__(self, message):
         super().__init__(message)
@@ -22,13 +25,30 @@ class Shop:
         self.last_day = None
 
 
+def server_day(moment, refresh_hour=5):
+    """把服务器时区的某个时刻折算成「服务器日期」：每天 refresh_hour 点刷新。
+
+    05:00 刷新时，凌晨 00:00-04:59 仍属于前一天。
+    """
+    return (moment - timedelta(hours=refresh_hour)).date()
+
+
 def buy(shop, item, day, money):
-    """买一件。缺陷：按累计次数判限购、余额不足不拦。"""
+    """买一件。day 为服务器日期（05:00 刷新后的日期，可用 server_day 折算）。
+
+    日期变化时清零当天购买计数；超过每日限购或余额不足时抛 ShopError，
+    余额与计数均不变。
+    """
     if item not in shop.stock:
         raise ShopError("没有这个商品：%s" % item)
     price, limit = shop.stock[item]
-    shop.purchases[item] = shop.purchases.get(item, 0) + 1
-    if shop.purchases[item] > limit:
+    if day != shop.last_day:
+        shop.purchases.clear()
+        shop.last_day = day
+    bought = shop.purchases.get(item, 0)
+    if bought >= limit:
         raise ShopError("超过每日限购：%s" % item)
-    money -= price
-    return money, shop.purchases[item]
+    if money < price:
+        raise ShopError("余额不足：%s" % item)
+    shop.purchases[item] = bought + 1
+    return money - price, bought + 1

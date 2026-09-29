@@ -19,11 +19,11 @@ python3 -m unittest discover -s tests -v
 - 不变量：`bought_today <= daily_limit`；余额永不为负；同一批购买重复执行结果相同。
 - 规模：1000 种商品、每秒 10 万次购买 1 秒内完成，内存 O(商品数)。
 
-## 现在的行为
+## 实现
 
-- `buy` 用 `shop.purchases[item]` 累计计数，从不按天清零。
-- 扣钱前不校验余额，余额可以变负。
-- `refresh_hour`/`last_day` 存了但没人用。
+- `buy` 按服务器日期计数：`day != shop.last_day` 时清零当天计数再判定限购。
+- 扣钱前校验余额，余额不足抛 `ShopError`，余额与计数均不变。
+- `server_day(moment, refresh_hour)` 把服务器时区时刻折算成服务器日期（05:00 刷新）。
 
 ## 输出
 
